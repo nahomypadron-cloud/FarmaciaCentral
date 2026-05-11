@@ -24,6 +24,7 @@ export default function Medicamentos() {
   const [listError, setListError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState<string>(CATEGORIA_TODAS)
+  const [editingId, setEditingId] = useState<string | number | null>(null)
 
   const fetchMedicamentos = useCallback(async () => {
     setListError(null)
@@ -45,6 +46,18 @@ export default function Medicamentos() {
   useEffect(() => {
     void fetchMedicamentos()
   }, [fetchMedicamentos])
+
+  useEffect(() => {
+    if (editingId == null) return
+    if (!medicamentos.some((m) => m.id === editingId)) {
+      setEditingId(null)
+    }
+  }, [medicamentos, editingId])
+
+  const editingMedicamento = useMemo(() => {
+    if (editingId == null) return null
+    return medicamentos.find((m) => m.id === editingId) ?? null
+  }, [medicamentos, editingId])
 
   const categories = useMemo(() => {
     const set = new Set<string>()
@@ -91,8 +104,34 @@ export default function Medicamentos() {
       setListError(err.message)
       return
     }
+    if (editingId === id) setEditingId(null)
     await fetchMedicamentos()
   }
+
+  const updateMedicamento = async (
+    id: string | number,
+    med: Omit<Medicamento, "id">
+  ): Promise<string | null> => {
+    const { error: err } = await supabase.from("medicamentos").update(med).eq("id", id)
+    if (err) {
+      return err.message
+    }
+    await fetchMedicamentos()
+    return null
+  }
+
+  const handleEdit = useCallback((id: string | number) => {
+    setEditingId(id)
+    requestAnimationFrame(() => {
+      document
+        .getElementById("ph-inventario-panel")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }, [])
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null)
+  }, [])
 
   return (
     <div className="ph-app">
@@ -175,11 +214,17 @@ export default function Medicamentos() {
           <MedicamentoGrid
             medicamentos={filtered}
             onDelete={deleteMedicamento}
+            onEdit={handleEdit}
             formatMoney={(n) => money.format(n)}
           />
         )}
 
-        <MedicamentoForm onAdd={addMedicamento} />
+        <MedicamentoForm
+          onAdd={addMedicamento}
+          onUpdate={updateMedicamento}
+          editingMedicamento={editingMedicamento}
+          onCancelEdit={cancelEdit}
+        />
       </main>
 
       <footer className="ph-footer">

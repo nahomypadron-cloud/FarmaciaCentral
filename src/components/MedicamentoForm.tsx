@@ -1,26 +1,57 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import type { Medicamento } from "../types/medicamento"
 import { CATEGORIAS_PREDEFINIDAS } from "../types/medicamento"
 
 type Props = {
   onAdd: (med: Omit<Medicamento, "id">) => Promise<string | null>
+  onUpdate?: (
+    id: string | number,
+    med: Omit<Medicamento, "id">
+  ) => Promise<string | null>
+  editingMedicamento?: Medicamento | null
+  onCancelEdit?: () => void
 }
 
 const OTRA = "__otra__"
 
-export default function MedicamentoForm({ onAdd }: Props) {
+const emptyForm = {
+  nombre: "",
+  descripcion: "",
+  precio: "",
+  stock: "",
+  categoriaSelect: "" as string,
+  categoriaOtra: "",
+}
+
+export default function MedicamentoForm({
+  onAdd,
+  onUpdate,
+  editingMedicamento,
+  onCancelEdit,
+}: Props) {
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null
   )
-  const [form, setForm] = useState({
-    nombre: "",
-    descripcion: "",
-    precio: "",
-    stock: "",
-    categoriaSelect: "" as string,
-    categoriaOtra: "",
-  })
+  const [form, setForm] = useState(emptyForm)
+
+  useEffect(() => {
+    if (!editingMedicamento) {
+      setForm(emptyForm)
+      return
+    }
+    const tipo = editingMedicamento.tipo?.trim() || ""
+    const inList = (CATEGORIAS_PREDEFINIDAS as readonly string[]).includes(tipo)
+    setForm({
+      nombre: editingMedicamento.nombre,
+      descripcion: editingMedicamento.descripcion || "",
+      precio: String(editingMedicamento.precio),
+      stock: String(editingMedicamento.stock),
+      categoriaSelect: inList ? tipo : OTRA,
+      categoriaOtra: inList ? "" : tipo,
+    })
+    setFeedback(null)
+  }, [editingMedicamento])
 
   const categoriaFinal =
     form.categoriaSelect === OTRA
@@ -35,13 +66,16 @@ export default function MedicamentoForm({ onAdd }: Props) {
 
     setSaving(true)
     setFeedback(null)
-    const err = await onAdd({
+    const payload = {
       nombre: form.nombre.trim(),
       descripcion: form.descripcion.trim(),
       precio: Number(form.precio),
       stock: Number(form.stock),
       tipo: categoriaFinal,
-    })
+    }
+    const err = editingMedicamento
+      ? await onUpdate?.(editingMedicamento.id, payload)
+      : await onAdd(payload)
     setSaving(false)
 
     if (err) {
@@ -52,28 +86,34 @@ export default function MedicamentoForm({ onAdd }: Props) {
       return
     }
 
-    setForm({
-      nombre: "",
-      descripcion: "",
-      precio: "",
-      stock: "",
-      categoriaSelect: "",
-      categoriaOtra: "",
-    })
-    setFeedback({
-      kind: "ok",
-      text: "Producto guardado correctamente.",
-    })
+    if (editingMedicamento) {
+      setFeedback({
+        kind: "ok",
+        text: "Cambios guardados correctamente.",
+      })
+      onCancelEdit?.()
+    } else {
+      setForm(emptyForm)
+      setFeedback({
+        kind: "ok",
+        text: "Producto guardado correctamente.",
+      })
+    }
   }
 
   return (
-    <section className="ph-panel" aria-labelledby="panel-inventario-title">
+    <section
+      id="ph-inventario-panel"
+      className="ph-panel"
+      aria-labelledby="panel-inventario-title"
+    >
       <h2 id="panel-inventario-title" className="ph-panel-title">
-        Alta de producto
+        {editingMedicamento ? "Editar producto" : "Alta de producto"}
       </h2>
       <p className="ph-panel-sub">
-        Registra medicamentos y artículos de salud. La categoría alimenta los
-        filtros del catálogo.
+        {editingMedicamento
+          ? "Modifica los datos y guarda para actualizar el catálogo."
+          : "Registra medicamentos y artículos de salud. La categoría alimenta los filtros del catálogo."}
       </p>
       <form className="ph-form" onSubmit={handleSubmit}>
         <div className="ph-form-grid">
@@ -179,13 +219,30 @@ export default function MedicamentoForm({ onAdd }: Props) {
             {feedback.kind === "ok" ? feedback.text : null}
           </p>
         ) : null}
-        <div className="ph-form-actions">
+        <div className="ph-form-actions ph-form-actions-row">
+          {editingMedicamento ? (
+            <button
+              type="button"
+              className="ph-btn ph-btn-ghost"
+              disabled={saving}
+              onClick={() => {
+                setFeedback(null)
+                onCancelEdit?.()
+              }}
+            >
+              Cancelar edición
+            </button>
+          ) : null}
           <button
             type="submit"
             className="ph-btn ph-btn-primary"
             disabled={saving}
           >
-            {saving ? "Guardando…" : "Guardar en catálogo"}
+            {saving
+              ? "Guardando…"
+              : editingMedicamento
+                ? "Guardar cambios"
+                : "Guardar en catálogo"}
           </button>
         </div>
       </form>

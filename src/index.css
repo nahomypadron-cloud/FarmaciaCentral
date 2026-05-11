@@ -455,15 +455,36 @@ code {
   max-width: 75%;
 }
 
+.ph-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ph-card-edit,
 .ph-card-delete {
   font: inherit;
   font-size: 0.75rem;
-  color: var(--ph-danger);
   background: transparent;
   border: none;
   cursor: pointer;
   text-decoration: underline;
   padding: 0.15rem;
+}
+
+.ph-card-edit {
+  color: var(--ph-teal-dark);
+}
+
+.ph-card-edit:hover {
+  color: var(--ph-teal);
+}
+
+.ph-card-delete {
+  color: var(--ph-danger);
 }
 
 .ph-card-delete:hover {
@@ -676,6 +697,13 @@ code {
   margin-top: 1.15rem;
 }
 
+.ph-form-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .ph-btn {
   font: inherit;
   font-weight: 600;
@@ -693,6 +721,17 @@ code {
 
 .ph-btn-primary:hover {
   filter: brightness(1.05);
+}
+
+.ph-btn-ghost {
+  background: transparent;
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.ph-btn-ghost:hover:not(:disabled) {
+  background: var(--ph-surface);
 }
 
 .ph-footer {
